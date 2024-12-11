@@ -1,12 +1,11 @@
 import cv2
-import timeit
 import os
 
 # Ensure result directory exists
 os.makedirs('./data/result', exist_ok=True)
 
 # 이미지 검출기
-def imageDetector(image_path, cascade):
+def imageDetector(image_path, cascade, padding=20):
     # Load image
     img = cv2.imread(image_path)
     
@@ -21,12 +20,17 @@ def imageDetector(image_path, cascade):
         minSize=(20, 20)    # Minimum size of detected objects
     )
     
-    # Save detected faces
-    for idx, box in enumerate(results):
-        x, y, w, h = box
-        x, y = x-40, y-40
-        w, h = w+50, h+50
-        face_image = img[y:y+h, x:x+w]
+    # Save detected faces with padding
+    for idx, (x, y, w, h) in enumerate(results):
+        # Calculate padded bounding box
+        x_pad = max(x - 2 * padding, 0)
+        y_pad = max(y - 4 * padding, 0)
+        w_pad = min(w + 3 * padding, img.shape[1] - x_pad)
+        h_pad = min(h + 5 * padding, img.shape[0] - y_pad)
+        
+        # Crop the face image with padding
+        face_image = img[y_pad:y_pad + h_pad, x_pad:x_pad + w_pad]
+        
         # Save face image to the result directory
         cv2.imwrite(f'./data/result/face_{idx}.jpg', face_image)
 
@@ -35,8 +39,19 @@ cascade_filename = 'haarcascade_frontalface_alt.xml'
 # Load model
 cascade = cv2.CascadeClassifier(cascade_filename)
 
-# Path to input image
+# Path to save the captured image
 image_path = './data/1.jpg'
 
-# Detect faces in the image
-imageDetector(image_path, cascade)
+# Capture image from webcam
+cap = cv2.VideoCapture(0)
+ret, frame = cap.read()
+
+if ret:
+    # Save the captured frame
+    cv2.imwrite(image_path, frame)
+
+# Release the webcam
+cap.release()
+
+# Detect faces in the captured image
+imageDetector(image_path, cascade, padding=20)
